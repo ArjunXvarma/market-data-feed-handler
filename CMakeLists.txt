@@ -8,6 +8,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # Main executable
 add_executable(market_data_feed_handler
         src/main.cpp
+        include/MarketTick.hpp
 )
 target_include_directories(market_data_feed_handler PRIVATE ${CMAKE_SOURCE_DIR}/include)
 
@@ -15,6 +16,9 @@ target_include_directories(market_data_feed_handler PRIVATE ${CMAKE_SOURCE_DIR}/
 add_executable(server
         src/server.cpp
         src/server/Server.cpp
+        include/MarketTick.hpp
+        src/server/SyntheticFeed.cpp
+        include/server/SyntheticFeed.hpp
 )
 target_include_directories(server PRIVATE ${CMAKE_SOURCE_DIR}/include)
 
@@ -23,5 +27,6 @@ add_executable(client
         src/client.cpp
         src/client/Client.cpp
         include/client/Client.hpp
+        include/MarketTick.hpp
 )
 target_include_directories(client PRIVATE ${CMAKE_SOURCE_DIR}/include)

@@ -11,7 +11,6 @@ Client::Client(const std::string& ip, int port)
     if (socket_fd < 0)
         throw std::runtime_error("Error creating socket");
 
-    // Allow multiple clients on same machine/port
     int reuse = 1;
     if (setsockopt(socket_fd, SOL_SOCKET, SO_REUSEADDR, (char*)&reuse, sizeof(reuse)) < 0)
         throw std::runtime_error("Error setting SO_REUSEADDR");
@@ -38,15 +37,15 @@ void Client::joinGroup() {
 }
 
 void Client::receive() {
-    char buffer[1024];
     while (true) {
-        int nbytes = recv(socket_fd, buffer, sizeof(buffer) - 1, 0);
-        if (nbytes < 0) {
-            perror("recv");
-            break;
+        MarketTick tick{};
+        int nbytes = recv(socket_fd, &tick, sizeof(tick), 0);
+        if (nbytes == sizeof(tick)) {
+            std::cout << "Tick: " << tick.symbol
+                      << " Price: " << tick.price
+                      << " Volume: " << tick.volume
+                      << " TS: " << tick.timestamp << std::endl;
         }
-        buffer[nbytes] = '\0';
-        std::cout << "Received: " << buffer << std::endl;
     }
 }
 

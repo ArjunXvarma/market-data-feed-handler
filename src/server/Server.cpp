@@ -6,7 +6,7 @@
 
 #include <thread>
 
-Server::Server(const char *ip, int port) : socket_fd(-1), ip_(ip), port_(port) {
+Server::Server(const char *ip, int port) : socket_fd(-1), ip_(ip), port_(port), feed(SyntheticFeed("AAPL", 150.0)) {
     socket_fd = socket(AF_INET, SOCK_DGRAM, 0);
     if (socket_fd < 0)
         throw std::runtime_error("Error creating socket");
@@ -18,22 +18,22 @@ Server::Server(const char *ip, int port) : socket_fd(-1), ip_(ip), port_(port) {
 }
 
 void Server::run() {
-    int counter = 0;
     while (true) {
-        std::string message = "Hello Multicast " + std::to_string(counter++);
-
-        if (int sent = sendto(socket_fd, message.c_str(), message.size(), 0, (sockaddr*) &server_addr, sizeof(server_addr)); sent < 0)
-            throw std::runtime_error("Error sending message");
-
-        std::cout << "Sent: " << message << std::endl;
-        std::this_thread::sleep_for(std::chrono::seconds(1));
+        MarketTick t = feed.next_tick();
+        std::cout << "Timestamp: " << t.timestamp
+                  << " Symbol: " << t.symbol
+                  << " Price: " << t.price
+                  << " Volume: " << t.volume
+                  << std::endl;
+        sendto(socket_fd, &t, sizeof(t), 0, (sockaddr*)&server_addr, sizeof(server_addr));
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        std::cout << "Sent market tick at timestamp: " << t.timestamp << std::endl;
     }
 }
 
 Server::~Server() {
     if (socket_fd >= 0) {
         if (close(socket_fd) < 0) {
-            // Optional: log error instead of throwing inside destructor
             std::cerr << "Warning: failed to close socket_fd\n";
         } else {
             std::cout << "Socket closed successfully\n";

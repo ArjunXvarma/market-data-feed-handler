@@ -8,8 +8,10 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <unistd.h>
-
 #include <iostream>
+
+#include "SyntheticFeed.hpp"
+#include "MarketTick.hpp"
 
 class Server {
 private:
@@ -17,6 +19,7 @@ private:
     sockaddr_in server_addr;
     const char* ip_;
     int port_;
+    SyntheticFeed feed;
 
 public:
     Server(const char* ip, int port);

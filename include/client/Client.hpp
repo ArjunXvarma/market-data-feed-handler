@@ -9,9 +9,10 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <unistd.h>
-
 #include <iostream>
 #include <string>
+
+#include "MarketTick.hpp"
 
 class Client {
 private:
