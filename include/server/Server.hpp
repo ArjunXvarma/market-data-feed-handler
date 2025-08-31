@@ -5,26 +5,39 @@
 #ifndef SERVER_HPP
 #define SERVER_HPP
 
-#include <arpa/inet.h>
 #include <netinet/in.h>
-#include <unistd.h>
-#include <iostream>
-
+#include <arpa/inet.h>
+#include <string>
+#include <atomic>
+#include <thread>
 #include "SyntheticFeed.hpp"
 #include "MarketTick.hpp"
+#include "RingBuffer.hpp"
 
 class Server {
 private:
-    int socket_fd;
+    void produce_loop();
+    void consume_loop();
+
+    int socket_fd_;
     sockaddr_in server_addr;
-    const char* ip_;
+
+    std::string ip_;
     int port_;
-    SyntheticFeed feed;
+    SyntheticFeed feed_;
+
+    std::thread producer_thread_;
+    std::thread consumer_thread_;
+    std::atomic<bool> running_;
+
+    LockFreeRingBuffer<MarketTick> buffer_;
 
 public:
     Server(const char* ip, int port);
-    void run();
     ~Server();
+
+    void run();
+    void stop();
 };
 
 

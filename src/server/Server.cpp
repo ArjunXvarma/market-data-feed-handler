@@ -1,14 +1,17 @@
-//
-// Created by Arjun Varma on 30/08/25.
-//
-
 #include "server/Server.hpp"
+#include <iostream>
+#include <unistd.h>
 
-#include <thread>
-
-Server::Server(const char *ip, int port) : socket_fd(-1), ip_(ip), port_(port), feed(SyntheticFeed("AAPL", 150.0)) {
-    socket_fd = socket(AF_INET, SOCK_DGRAM, 0);
-    if (socket_fd < 0)
+Server::Server(const char* ip, int port)
+    : socket_fd_(-1),
+      ip_(ip),
+      port_(port),
+      feed_("AAPL", 150.0),
+      running_(false),
+      buffer_(1024) // ring buffer_ capacity
+{
+    socket_fd_ = socket(AF_INET, SOCK_DGRAM, 0);
+    if (socket_fd_ < 0)
         throw std::runtime_error("Error creating socket");
 
     server_addr = {};
@@ -18,27 +21,51 @@ Server::Server(const char *ip, int port) : socket_fd(-1), ip_(ip), port_(port), 
 }
 
 void Server::run() {
-    while (true) {
-        MarketTick t = feed.next_tick();
-        std::cout << "Timestamp: " << t.timestamp
-                  << " Symbol: " << t.symbol
-                  << " Price: " << t.price
-                  << " Volume: " << t.volume
-                  << std::endl;
-        sendto(socket_fd, &t, sizeof(t), 0, (sockaddr*)&server_addr, sizeof(server_addr));
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        std::cout << "Sent market tick at timestamp: " << t.timestamp << std::endl;
+    running_ = true;
+    producer_thread_ = std::thread(&Server::produce_loop, this);
+    consumer_thread_ = std::thread(&Server::consume_loop, this);
+}
+
+void Server::stop() {
+    running_ = false;
+    if (producer_thread_.joinable()) producer_thread_.join();
+    if (consumer_thread_.joinable()) consumer_thread_.join();
+}
+
+void Server::produce_loop() {
+    while (running_) {
+        MarketTick t = feed_.next_tick();
+        while (!buffer_.push(t)) {
+            // buffer full, spin (or sleep briefly)
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    }
+}
+
+void Server::consume_loop() {
+    while (running_) {
+        MarketTick t{};
+        if (buffer_.pop(t)) {
+            sendto(socket_fd_, &t, sizeof(t), 0,
+                   (sockaddr*)&server_addr, sizeof(server_addr));
+            std::cout << "Sent tick ts=" << t.timestamp
+                      << " symbol=" << t.symbol
+                      << " price=" << t.price
+                      << " vol=" << t.volume
+                      << std::endl;
+        } else {
+            std::this_thread::yield();
+        }
     }
 }
 
 Server::~Server() {
-    if (socket_fd >= 0) {
-        if (close(socket_fd) < 0) {
-            std::cerr << "Warning: failed to close socket_fd\n";
+    stop();
+    if (socket_fd_ >= 0) {
+        if (close(socket_fd_) < 0) {
+            std::cerr << "Warning: failed to close socket_fd_\n";
         } else {
             std::cout << "Socket closed successfully\n";
         }
     }
 }
-
-
