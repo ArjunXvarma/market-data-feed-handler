@@ -1,18 +1,24 @@
+// Server.cpp
 #include "server/Server.hpp"
 #include <iostream>
 #include <unistd.h>
+#include <chrono>
 
-Server::Server(const char* ip, int port)
+Server::Server(const char* ip, int port, size_t total_ticks)
     : socket_fd_(-1),
       ip_(ip),
       port_(port),
       feed_("AAPL", 150.0),
       running_(false),
-      buffer_(1024) // ring buffer_ capacity
+      buffer_(1 << 16),
+      total_ticks_(total_ticks)
 {
     socket_fd_ = socket(AF_INET, SOCK_DGRAM, 0);
     if (socket_fd_ < 0)
         throw std::runtime_error("Error creating socket");
+
+    constexpr int buf = 4 * 1024 * 1024; // 4mb
+    setsockopt(socket_fd_, SOL_SOCKET, SO_SNDBUF, &buf, sizeof(buf));
 
     server_addr = {};
     server_addr.sin_family = AF_INET;
@@ -22,8 +28,49 @@ Server::Server(const char* ip, int port)
 
 void Server::run() {
     running_ = true;
+    start_time_ = std::chrono::high_resolution_clock::now();
     producer_thread_ = std::thread(&Server::produce_loop, this);
     consumer_thread_ = std::thread(&Server::consume_loop, this);
+}
+
+void Server::produce_loop() {
+    size_t sent = 0;
+    while (running_ && sent < total_ticks_) {
+        MarketTick t = feed_.next_tick();
+        auto now = std::chrono::high_resolution_clock::now();
+        uint64_t ns = std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch()).count();
+        t.send_timestamp = ns;
+        MarketTickAligned aligned{};
+        aligned.tick = t;
+        while (!buffer_.push(aligned));
+        sent++;
+    }
+    running_ = false;
+}
+
+void Server::consume_loop() {
+    std::vector<double> latencies;
+    latencies.reserve(total_ticks_);
+    const auto start_time = std::chrono::high_resolution_clock::now();
+
+    while (running_ || !buffer_.empty()) {
+        MarketTickAligned aligned{};
+        if (buffer_.pop(aligned)) {
+            auto now = std::chrono::high_resolution_clock::now();
+            aligned.tick.send_timestamp = std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch()).count();
+            sendto(socket_fd_, &aligned.tick, sizeof(MarketTick), 0, (sockaddr*)&server_addr, sizeof(server_addr));
+            double latency_us = static_cast<double>(aligned.tick.send_timestamp) / 1000.0;
+            latencies.push_back(latency_us);
+        }
+    }
+
+    end_time_ = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> elapsed = end_time_ - start_time_;
+    std::sort(latencies.begin(), latencies.end());
+    std::cout << "=== Server Stats ===\n"
+              << "Ticks sent: " << total_ticks_ << "\n"
+              << "Elapsed time: " << elapsed.count() << "s\n"
+              << "Throughput: " << (total_ticks_ / elapsed.count()) << " ticks/sec\n";
 }
 
 void Server::stop() {
@@ -32,39 +79,13 @@ void Server::stop() {
     if (consumer_thread_.joinable()) consumer_thread_.join();
 }
 
-void Server::produce_loop() {
-    while (running_) {
-        MarketTick t = feed_.next_tick();
-        while (!buffer_.push(t)) {
-            // buffer full, spin (or sleep briefly)
-        }
-        std::this_thread::sleep_for(std::chrono::milliseconds(50));
-    }
-}
-
-void Server::consume_loop() {
-    while (running_) {
-        MarketTick t{};
-        if (buffer_.pop(t)) {
-            sendto(socket_fd_, &t, sizeof(t), 0,
-                   (sockaddr*)&server_addr, sizeof(server_addr));
-            std::cout << "Sent tick ts=" << t.timestamp
-                      << " symbol=" << t.symbol
-                      << " price=" << t.price
-                      << " vol=" << t.volume
-                      << std::endl;
-        } else {
-            std::this_thread::yield();
-        }
-    }
-}
-
 Server::~Server() {
     stop();
     if (socket_fd_ >= 0) {
         if (close(socket_fd_) < 0) {
             std::cerr << "Warning: failed to close socket_fd_\n";
-        } else {
+        }
+        else {
             std::cout << "Socket closed successfully\n";
         }
     }

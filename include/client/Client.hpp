@@ -5,13 +5,13 @@
 #ifndef CLIENT_HPP
 #define CLIENT_HPP
 
-
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <unistd.h>
 #include <iostream>
 #include <string>
 #include <thread>
+#include <atomic>
 
 #include "MarketTick.hpp"
 #include "RingBuffer.hpp"
@@ -25,12 +25,13 @@ private:
     ip_mreq mreq_{};
     std::string ip_;
     int port_;
+    size_t total_ticks_{};
 
     std::thread producer_thread_;
     std::thread consumer_thread_;
-    std::atomic<bool> running_;
+    std::atomic<bool> running_{false};
 
-    LockFreeRingBuffer<MarketTick> buffer_;
+    LockFreeRingBuffer<MarketTickAligned> buffer_;
     VWAPCalculator session_vwap_;
     RollingVWAP rolling_vwap_;
 
@@ -45,5 +46,4 @@ public:
     ~Client();
 };
 
-
-#endif //CLIENT_HPP
+#endif // CLIENT_HPP

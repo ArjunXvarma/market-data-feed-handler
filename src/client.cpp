@@ -15,7 +15,6 @@ void signal_handler(int) {
 }
 
 int main() {
-    // Register signal handler for Ctrl+C
     std::signal(SIGINT, signal_handler);
 
     try {
@@ -23,7 +22,6 @@ int main() {
         client.joinGroup();
         client.receive();
 
-        // Run until Ctrl+C
         while (!stop_flag) {
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
         }

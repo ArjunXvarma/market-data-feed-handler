@@ -10,6 +10,7 @@
 #include <string>
 #include <atomic>
 #include <thread>
+#include <chrono>
 #include "SyntheticFeed.hpp"
 #include "MarketTick.hpp"
 #include "RingBuffer.hpp"
@@ -30,10 +31,14 @@ private:
     std::thread consumer_thread_;
     std::atomic<bool> running_;
 
-    LockFreeRingBuffer<MarketTick> buffer_;
+    LockFreeRingBuffer<MarketTickAligned> buffer_;
+
+    size_t total_ticks_;
+    std::chrono::high_resolution_clock::time_point start_time_;
+    std::chrono::high_resolution_clock::time_point end_time_;
 
 public:
-    Server(const char* ip, int port);
+    Server(const char* ip, int port, size_t total_ticks);
     ~Server();
 
     void run();

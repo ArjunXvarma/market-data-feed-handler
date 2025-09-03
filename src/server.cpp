@@ -6,6 +6,7 @@
 #include <csignal>
 #include <atomic>
 #include "server/Server.hpp"
+#include "MarketTick.hpp"
 
 std::atomic<bool> running(true);
 
@@ -14,17 +15,15 @@ void signal_handler(int) {
 }
 
 int main() {
-    // Catch Ctrl-C (SIGINT) to shut down gracefully
     std::signal(SIGINT, signal_handler);
 
     try {
         constexpr int port = 30001;
-        Server server("239.255.0.1", port);
+        Server server("239.255.0.1", port, 1000000);
         server.run();
 
         std::cout << "Server running on " << port << std::endl;
 
-        // Keep the main thread alive until stopped
         while (running) {
             std::this_thread::sleep_for(std::chrono::seconds(1));
         }
