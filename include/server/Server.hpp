@@ -21,7 +21,7 @@ private:
     void consume_loop();
 
     int socket_fd_;
-    sockaddr_in server_addr;
+    sockaddr_in server_addr{};
 
     std::string ip_;
     int port_;

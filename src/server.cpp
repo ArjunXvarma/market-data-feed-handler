@@ -19,7 +19,7 @@ int main() {
 
     try {
         constexpr int port = 30001;
-        Server server("239.255.0.1", port, 1000000);
+        Server server("239.255.0.1", port, 10000000);
         server.run();
 
         std::cout << "Server running on " << port << std::endl;

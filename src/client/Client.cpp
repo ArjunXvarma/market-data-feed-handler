@@ -9,7 +9,7 @@ Client::Client(const std::string& ip, const int port)
       port_(port),
       buffer_(1024),
       rolling_vwap_(std::chrono::seconds(60)),
-      total_ticks_(1000000) {
+      total_ticks_(10000000) {
     socket_fd_ = socket(AF_INET, SOCK_DGRAM, 0);
     if (socket_fd_ < 0)
         throw std::runtime_error("Error creating socket");
@@ -61,12 +61,13 @@ void Client::consume_loop() {
     while (received < total_ticks_) {
         MarketTickAligned aligned{};
         if (buffer_.pop(aligned)) {
-            auto now = std::chrono::high_resolution_clock::now();
-            uint64_t recv_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch()).count();
-
-            double latency_us = static_cast<double>(recv_ns - aligned.tick.send_timestamp) / 1000.0;
-
-            latencies.push_back(latency_us);
+            if (received % 100 == 0) {
+                auto now = std::chrono::high_resolution_clock::now();
+                uint64_t recv_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                                       now.time_since_epoch()).count();
+                double latency_us = (recv_ns - aligned.tick.send_timestamp) / 1000.0;
+                latencies.push_back(latency_us);
+            }
             ++received;
         } else {
             std::this_thread::yield();
@@ -87,15 +88,20 @@ void Client::consume_loop() {
 }
 
 void Client::produce_loop() {
+    char buffer[4096];
     while (running_) {
-        MarketTick wire{};
-        int nbytes = recv(socket_fd_, &wire, sizeof(wire), 0);
-        if (nbytes == sizeof(wire)) {
-            MarketTickAligned aligned{};
-            aligned.tick = wire;
-            buffer_.push(aligned);
-        } else if (nbytes <= 0) {
-            break;
+        ssize_t bytes = recvfrom(socket_fd_, buffer, sizeof(buffer), 0, nullptr, nullptr);
+        if (bytes > 0) {
+            const size_t count = bytes / sizeof(MarketTick);
+            const auto* ticks = reinterpret_cast<MarketTick*>(buffer);
+
+            for (size_t i = 0; i < count; i++) {
+                MarketTickAligned tick{};
+                tick.tick = ticks[i];
+                while (!buffer_.push(tick)) {
+                    std::this_thread::yield();
+                }
+            }
         }
     }
 }
