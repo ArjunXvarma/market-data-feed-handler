@@ -49,8 +49,6 @@ void Server::produce_loop() {
 }
 
 void Server::consume_loop() {
-    std::vector<double> latencies;
-    latencies.reserve(total_ticks_);
     const auto start_time = std::chrono::high_resolution_clock::now();
 
     while (running_ || !buffer_.empty()) {
@@ -59,14 +57,11 @@ void Server::consume_loop() {
             auto now = std::chrono::high_resolution_clock::now();
             aligned.tick.send_timestamp = std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch()).count();
             sendto(socket_fd_, &aligned.tick, sizeof(MarketTick), 0, (sockaddr*)&server_addr, sizeof(server_addr));
-            double latency_us = static_cast<double>(aligned.tick.send_timestamp) / 1000.0;
-            latencies.push_back(latency_us);
         }
     }
 
     end_time_ = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> elapsed = end_time_ - start_time_;
-    std::sort(latencies.begin(), latencies.end());
+    std::chrono::duration<double> elapsed = end_time_ - start_time;
     std::cout << "=== Server Stats ===\n"
               << "Ticks sent: " << total_ticks_ << "\n"
               << "Elapsed time: " << elapsed.count() << "s\n"
@@ -82,11 +77,7 @@ void Server::stop() {
 Server::~Server() {
     stop();
     if (socket_fd_ >= 0) {
-        if (close(socket_fd_) < 0) {
-            std::cerr << "Warning: failed to close socket_fd_\n";
-        }
-        else {
-            std::cout << "Socket closed successfully\n";
-        }
+        if (close(socket_fd_) < 0) std::cerr << "Warning: failed to close socket_fd_\n";
+        else std::cout << "Socket closed successfully\n";
     }
 }

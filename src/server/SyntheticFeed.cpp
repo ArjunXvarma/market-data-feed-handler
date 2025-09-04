@@ -16,8 +16,6 @@ MarketTick SyntheticFeed::next_tick() {
     if (current_price < 1.0) current_price = 1.0;
 
     MarketTick tick{};
-    tick.timestamp = std::chrono::duration_cast<std::chrono::nanoseconds>(
-                         std::chrono::high_resolution_clock::now().time_since_epoch()).count();
     std::strncpy(tick.symbol, symbol, sizeof(tick.symbol));
     tick.price = current_price;
     tick.volume = vol_dist(rng);
