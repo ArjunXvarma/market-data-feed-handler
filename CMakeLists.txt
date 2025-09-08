@@ -34,7 +34,6 @@ target_compile_definitions(server_perf PRIVATE ENABLE_PERF)
 
 # Main executable
 add_executable(market_data_feed_handler
-        src/main.cpp
         include/MarketTick.hpp
         include/RingBuffer.hpp
         include/client/VWAPstate.hpp
