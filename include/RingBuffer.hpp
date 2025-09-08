@@ -31,7 +31,7 @@ public:
         auto next_head = increment(head);
 
         if (next_head == tail_.load(std::memory_order_acquire)) {
-            return false; // buffer full
+            return false;
         }
 
         buffer_[head] = item;

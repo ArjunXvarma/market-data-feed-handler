@@ -14,7 +14,6 @@ void signal_handler(int) {
 }
 
 int main() {
-    // Catch Ctrl-C (SIGINT) to shut down gracefully
     std::signal(SIGINT, signal_handler);
 
     try {

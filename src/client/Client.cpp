@@ -69,7 +69,7 @@ void Client::consume_loop() {
                       << " Rolling VWAP: " << rolling_val
                       << std::endl;
         } else {
-            std::this_thread::yield(); // no data yet
+            std::this_thread::yield();
         }
     }
 }

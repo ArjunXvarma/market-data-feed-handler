@@ -15,7 +15,6 @@ void signal_handler(int) {
 }
 
 int main() {
-    // Register signal handler for Ctrl+C
     std::signal(SIGINT, signal_handler);
 
     try {

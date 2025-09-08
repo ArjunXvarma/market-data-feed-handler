@@ -8,8 +8,7 @@ Server::Server(const char* ip, int port)
       port_(port),
       feed_("AAPL", 150.0),
       running_(false),
-      buffer_(1024) // ring buffer_ capacity
-{
+      buffer_(1024) {
     socket_fd_ = socket(AF_INET, SOCK_DGRAM, 0);
     if (socket_fd_ < 0)
         throw std::runtime_error("Error creating socket");
@@ -35,9 +34,7 @@ void Server::stop() {
 void Server::produce_loop() {
     while (running_) {
         MarketTick t = feed_.next_tick();
-        while (!buffer_.push(t)) {
-            // buffer full, spin (or sleep briefly)
-        }
+        while (!buffer_.push(t));
         std::this_thread::sleep_for(std::chrono::milliseconds(50));
     }
 }

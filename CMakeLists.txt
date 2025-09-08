@@ -5,17 +5,6 @@ project(market_data_feed_handler VERSION 0.1.0 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Main executable
-add_executable(market_data_feed_handler
-        src/main.cpp
-        include/MarketTick.hpp
-        include/RingBuffer.hpp
-        include/client/VWAPstate.hpp
-        src/client/RollingVWAP.cpp
-        include/client/RollingVWAP.hpp
-)
-target_include_directories(market_data_feed_handler PRIVATE ${CMAKE_SOURCE_DIR}/include)
-
 # Server executable
 add_executable(server
         src/server.cpp
