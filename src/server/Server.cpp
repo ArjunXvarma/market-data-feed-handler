@@ -1,4 +1,3 @@
-// Server.cpp
 #include "server/Server.hpp"
 #include <iostream>
 #include <unistd.h>
@@ -66,6 +65,8 @@ void Server::consume_loop() {
             if (bytes < 0) perror("sendto failed");
             else sent_count += batch.size();
             batch.clear();
+            if (sent_count % 8 == 0)
+                std::this_thread::sleep_for(std::chrono::nanoseconds(335));
         }
     }
 

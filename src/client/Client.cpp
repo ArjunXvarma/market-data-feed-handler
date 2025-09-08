@@ -7,7 +7,7 @@ Client::Client(const std::string& ip, const int port)
     : socket_fd_(-1),
       ip_(ip),
       port_(port),
-      buffer_(1024),
+      buffer_(1 << 18),
       rolling_vwap_(std::chrono::seconds(60)),
       total_ticks_(10000000) {
     socket_fd_ = socket(AF_INET, SOCK_DGRAM, 0);
@@ -61,7 +61,7 @@ void Client::consume_loop() {
     while (received < total_ticks_) {
         MarketTickAligned aligned{};
         if (buffer_.pop(aligned)) {
-            if (received % 100 == 0) {
+            if (received % 1000 == 0) {
                 auto now = std::chrono::high_resolution_clock::now();
                 uint64_t recv_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
                                        now.time_since_epoch()).count();
@@ -88,12 +88,14 @@ void Client::consume_loop() {
 }
 
 void Client::produce_loop() {
-    char buffer[4096];
+    constexpr size_t BATCH_SIZE = 100;
+    char buffer[BATCH_SIZE * sizeof(MarketTick)];
+
     while (running_) {
         ssize_t bytes = recvfrom(socket_fd_, buffer, sizeof(buffer), 0, nullptr, nullptr);
         if (bytes > 0) {
             const size_t count = bytes / sizeof(MarketTick);
-            const auto* ticks = reinterpret_cast<MarketTick*>(buffer);
+            const MarketTick* ticks = reinterpret_cast<MarketTick*>(buffer);
 
             for (size_t i = 0; i < count; i++) {
                 MarketTickAligned tick{};
