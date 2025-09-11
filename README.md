@@ -32,39 +32,39 @@ At the core of this project, both the **server** and **client** follow a two-thr
   - **Consumer thread** pops ticks for downstream processing (e.g., rolling average, statistics).
 ```mermaid
 flowchart LR
-    subgraph Server
-        SProd[Producer Thread] --> SRing[Ring Buffer]
-        SRing --> SCons[Consumer Thread]
-    end
+  subgraph Server
+    SProd[Producer Thread] --> SRing[Ring Buffer]
+    SRing --> SCons[Consumer Thread]
+  end
 
-    subgraph Client
-        SCons -->|UDP Send| ClientRecv
-        ClientRecv[Producer Thread] --> CRing[Ring Buffer]
-        CRing --> CCons[Consumer Thread]
-        CCons -->|Process / Stats| CUse[Data Usage]
-    end
+  subgraph Client
+    SCons -->|UDP Send| ClientRecv
+    ClientRecv[Producer Thread] --> CRing[Ring Buffer]
+    CRing --> CCons[Consumer Thread]
+    CCons -->|Process / Stats| CUse[Data Usage]
+  end
 ```
 
 ### 1. Main Branch — Simple Client/Server with Rolling Average
 ```mermaid
 flowchart LR
-    subgraph Server
-        SProd["Producer Thread\n(SyntheticFeed)"]
-        SRing[Lock-free SPSC Ring Buffer]
-        SCons["Consumer Thread\n(UDP Sender)"]
-        
-        SProd --> SRing --> SCons
-    end
-    
-    subgraph Client
-        CProd["Producer Thread\n(UDP Receiver)"]
-        CRing[Lock-free SPSC Ring Buffer]
-        CCons["Consumer Thread\n(VWAP + Rolling VWAP)"]
-        
-        CProd --> CRing --> CCons
-    end
-    
-    SCons -- Multicast UDP --> CProd
+  subgraph Server
+    SProd["Producer Thread\n(SyntheticFeed)"]
+    SRing[Lock-free SPSC Ring Buffer]
+    SCons["Consumer Thread\n(UDP Sender)"]
+
+    SProd --> SRing --> SCons
+  end
+
+  subgraph Client
+    CProd["Producer Thread\n(UDP Receiver)"]
+    CRing[Lock-free SPSC Ring Buffer]
+    CCons["Consumer Thread\n(VWAP + Rolling VWAP)"]
+
+    CProd --> CRing --> CCons
+  end
+
+  SCons -- Multicast UDP --> CProd
 ```
 #### Architecture Summary of Code
 This branch implements a **baseline market data feed handler** over multicast UDP, structured with a **two-threaded** design on both
@@ -146,11 +146,11 @@ Ticks received: 1000000
 Elapsed time: 19.4399s
 Throughput: 51440.5 ticks/sec
 Latency p50: 47.958 us
-Latency p99: 276755 us
+Latency p99: 83.687 us
 ```
 #### Takeaways
 * **Client throughput** closely matches server, proving minimal packet loss under load.
-* **Latency distribution** is tight (p50 ~40µs, p99 ~84µs).
+* **Latency distribution** is tight (p50 ~48µs, p99 ~84µs).
 
 ### 3. Batching-server Branch — introducing batching
 ```mermaid
@@ -219,103 +219,19 @@ Latency p99: 79.959 us
 * **Latency**: Maintains **sub-100µs p99 latency**, despite pacing.
 * **Stability**: No packet drops under sustained load, thanks to pacing + batching.
 
-## Running the project
-### 1. Clone the Repository
-```shell
-git clone https://github.com/ArjunXvarma/market-data-feed-handler.git
-cd market_data_feed_handler
-```
-
-### 2. Switch to a branch
-> Each branch represents a different version of the project
-```shell
-# Baseline with rolling VWAP
-git checkout main
-
-# Two-thread architecture with latency benchmarks
-git checkout vanilla-server
-
-# High-throughput batched server
-git checkout batching-server
-```
-### 3. Build
-> Use **CMake** (minimum 3.22, C++20 required):
-
-```shell
-mkdir build
-cd build
-cmake ..
-cmake --build .
-```
-This builds two executables:
-- `server`
-- `client`
-
-### 4. Run
-
-Open **two terminals** — one for the server and one for the client.
-
-Start the Server
-```shell
-./server
-```
-
-Start the Client
-```shell
-./client
-```
-
-### 5. Example Output
-
-**Vanilla Server (1M ticks):**
-
-```shell
-# 'server' terminal
-=== Server Stats ===
-Ticks sent: 1000000
-Elapsed time: 19.9321s
-Throughput: 50170.4 ticks/sec
-
-# 'client' terminal
-=== Client Stats ===
-Ticks received: 1000000
-Elapsed time: 21.3928s
-Throughput: 46744.7 ticks/sec
-Latency p50: 39.375 us
-Latency p99: 83.542 us
-```
-
-**Batching Server (10M ticks):**
-
-```shell
-# 'server' terminal
-=== Server Stats ===
-Ticks sent: 10000000
-Elapsed time: 7.07944s
-Throughput: 1.41254e+06 ticks/sec
-
-# 'client' terminal
-=== Client Stats ===
-Ticks received: 10000000
-Elapsed time: 8.34022s
-Throughput: 1.19901e+06 ticks/sec
-Latency p50: 36.333 us
-Latency p99: 79.959 us
-```
-
 ## Future improvements
-This project demonstrates how multithreading, lock-free data structures, batching, and pacing can push a simple market data 
-feed handler toward **high-throughput, low-latency performance**. However, it is far from production-grade and leaves ample room for future 
+This project demonstrates how multithreading, lock-free data structures, batching, and pacing can push a simple market data
+feed handler toward **high-throughput, low-latency performance**. However, it is far from production-grade and leaves ample room for future
 improvements:
 
-- **Resilience & Fault Tolerance**: Current design assumes a perfect network — no packet loss, no clock drift, no message reordering. A 
-production system would require retransmission, sequencing, and gap-fill logic.
-- **Scalability**: The architecture is single-symbol and single-feed. Extending to thousands of instruments, multiple multicast groups, or 
-heterogeneous feeds would require careful load balancing and parallelism.
+- **Resilience & Fault Tolerance**: Current design assumes a perfect network — no packet loss, no clock drift, no message reordering. A
+  production system would require retransmission, sequencing, and gap-fill logic.
+- **Scalability**: The architecture is single-symbol and single-feed. Extending to thousands of instruments, multiple multicast groups, or
+  heterogeneous feeds would require careful load balancing and parallelism.
 - **Advanced Optimizations**: Exploring more optimization opportunities can improve the performance metrics by another magnitude.
 - **Testing Under Stress**: While throughput and latency are measured, the system has not been tested under adverse conditions.
-- **Extensibility**: Currently limited to synthetic ticks and VWAP-like analytics. Future work could integrate real exchange activity and 
-more advanced trading metrics.
+- **Extensibility**: Currently limited to synthetic ticks and VWAP-like analytics. Future work could integrate real exchange activity and
+  more advanced trading metrics.
 
-In short, this project is not a “perfect” feed handler — it is a learning-focused, iterative exploration of performance engineering in 
+In short, this project is not a “perfect” feed handler — it is a learning-focused, iterative exploration of performance engineering in
 C++. Each branch pushes the design a little further, and there is still plenty of headroom to explore.
