@@ -43,9 +43,10 @@ void Server::consume_loop() {
     while (running_) {
         MarketTick t{};
         if (buffer_.pop(t)) {
+            t.send_timestamp = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now().time_since_epoch()).count();
             sendto(socket_fd_, &t, sizeof(t), 0,
                    (sockaddr*)&server_addr, sizeof(server_addr));
-            std::cout << "Sent tick ts=" << t.timestamp
+            std::cout << "Sent tick ts=" << t.send_timestamp
                       << " symbol=" << t.symbol
                       << " price=" << t.price
                       << " vol=" << t.volume

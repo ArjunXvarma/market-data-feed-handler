@@ -30,3 +30,5 @@ add_executable(client
         include/client/VWAPCalculator.hpp
 )
 target_include_directories(client PRIVATE ${CMAKE_SOURCE_DIR}/include)
+
+add_subdirectory(tests)
