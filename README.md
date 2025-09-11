@@ -32,39 +32,39 @@ At the core of this project, both the **server** and **client** follow a two-thr
   - **Consumer thread** pops ticks for downstream processing (e.g., rolling average, statistics).
 ```mermaid
 flowchart LR
-    subgraph Server
-        SProd[Producer Thread] --> SRing[Ring Buffer]
-        SRing --> SCons[Consumer Thread]
-    end
+  subgraph Server
+    SProd[Producer Thread] --> SRing[Ring Buffer]
+    SRing --> SCons[Consumer Thread]
+  end
 
-    subgraph Client
-        SCons -->|UDP Send| ClientRecv
-        ClientRecv[Producer Thread] --> CRing[Ring Buffer]
-        CRing --> CCons[Consumer Thread]
-        CCons -->|Process / Stats| CUse[Data Usage]
-    end
+  subgraph Client
+    SCons -->|UDP Send| ClientRecv
+    ClientRecv[Producer Thread] --> CRing[Ring Buffer]
+    CRing --> CCons[Consumer Thread]
+    CCons -->|Process / Stats| CUse[Data Usage]
+  end
 ```
 
 ### 1. Main Branch — Simple Client/Server with Rolling Average
 ```mermaid
 flowchart LR
-    subgraph Server
-        SProd["Producer Thread\n(SyntheticFeed)"]
-        SRing[Lock-free SPSC Ring Buffer]
-        SCons["Consumer Thread\n(UDP Sender)"]
-        
-        SProd --> SRing --> SCons
-    end
-    
-    subgraph Client
-        CProd["Producer Thread\n(UDP Receiver)"]
-        CRing[Lock-free SPSC Ring Buffer]
-        CCons["Consumer Thread\n(VWAP + Rolling VWAP)"]
-        
-        CProd --> CRing --> CCons
-    end
-    
-    SCons -- Multicast UDP --> CProd
+  subgraph Server
+    SProd["Producer Thread\n(SyntheticFeed)"]
+    SRing[Lock-free SPSC Ring Buffer]
+    SCons["Consumer Thread\n(UDP Sender)"]
+
+    SProd --> SRing --> SCons
+  end
+
+  subgraph Client
+    CProd["Producer Thread\n(UDP Receiver)"]
+    CRing[Lock-free SPSC Ring Buffer]
+    CCons["Consumer Thread\n(VWAP + Rolling VWAP)"]
+
+    CProd --> CRing --> CCons
+  end
+
+  SCons -- Multicast UDP --> CProd
 ```
 #### Architecture Summary of Code
 This branch implements a **baseline market data feed handler** over multicast UDP, structured with a **two-threaded** design on both
@@ -135,7 +135,7 @@ The vanilla branch takes the **baseline design** from the main branch and **opti
 #### Results
 Example run on 1M ticks
 
-```c++
+```shell
 === Server Stats ===
 Ticks sent: 1000000
 Elapsed time: 17.7294s
@@ -200,7 +200,7 @@ The batching-server branch is the third evolution of the feed handler:
 
 #### Results
 Example run (10M ticks)
-```c++
+```shell
 === Server Stats ===
 Ticks sent: 10000000
 Elapsed time: 7.07944s
@@ -218,3 +218,20 @@ Latency p99: 79.959 us
 * **Throughput**: Breaks the **1M ticks/sec** barrier.
 * **Latency**: Maintains **sub-100µs p99 latency**, despite pacing.
 * **Stability**: No packet drops under sustained load, thanks to pacing + batching.
+
+## Future improvements
+This project demonstrates how multithreading, lock-free data structures, batching, and pacing can push a simple market data
+feed handler toward **high-throughput, low-latency performance**. However, it is far from production-grade and leaves ample room for future
+improvements:
+
+- **Resilience & Fault Tolerance**: Current design assumes a perfect network — no packet loss, no clock drift, no message reordering. A
+  production system would require retransmission, sequencing, and gap-fill logic.
+- **Scalability**: The architecture is single-symbol and single-feed. Extending to thousands of instruments, multiple multicast groups, or
+  heterogeneous feeds would require careful load balancing and parallelism.
+- **Advanced Optimizations**: Exploring more optimization opportunities can improve the performance metrics by another magnitude.
+- **Testing Under Stress**: While throughput and latency are measured, the system has not been tested under adverse conditions.
+- **Extensibility**: Currently limited to synthetic ticks and VWAP-like analytics. Future work could integrate real exchange activity and
+  more advanced trading metrics.
+
+In short, this project is not a “perfect” feed handler — it is a learning-focused, iterative exploration of performance engineering in
+C++. Each branch pushes the design a little further, and there is still plenty of headroom to explore.
