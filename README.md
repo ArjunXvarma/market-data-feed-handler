@@ -146,11 +146,11 @@ Ticks received: 1000000
 Elapsed time: 19.4399s
 Throughput: 51440.5 ticks/sec
 Latency p50: 47.958 us
-Latency p99: 276755 us
+Latency p99: 83.687 us
 ```
 #### Takeaways
 * **Client throughput** closely matches server, proving minimal packet loss under load.
-* **Latency distribution** is tight (p50 ~40µs, p99 ~84µs).
+* **Latency distribution** is tight (p50 ~48µs, p99 ~84µs).
 
 ### 3. Batching-server Branch — introducing batching
 ```mermaid
