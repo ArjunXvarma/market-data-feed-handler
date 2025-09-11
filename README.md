@@ -138,15 +138,15 @@ Example run on 1M ticks
 ```c++
 === Server Stats ===
 Ticks sent: 1000000
-Elapsed time: 19.9321s
-Throughput: 50170.4 ticks/sec
+Elapsed time: 17.7294s
+Throughput: 56403.6 ticks/sec
 
 === Client Stats ===
 Ticks received: 1000000
-Elapsed time: 21.3928s
-Throughput: 46744.7 ticks/sec
-Latency p50: 39.375 us
-Latency p99: 83.542 us
+Elapsed time: 19.4399s
+Throughput: 51440.5 ticks/sec
+Latency p50: 47.958 us
+Latency p99: 276755 us
 ```
 #### Takeaways
 * **Client throughput** closely matches server, proving minimal packet loss under load.
