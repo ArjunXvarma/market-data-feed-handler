@@ -135,18 +135,18 @@ The vanilla branch takes the **baseline design** from the main branch and **opti
 #### Results
 Example run on 1M ticks
 
-```c++
+```shell
 === Server Stats ===
 Ticks sent: 1000000
-Elapsed time: 19.9321s
-Throughput: 50170.4 ticks/sec
+Elapsed time: 17.7294s
+Throughput: 56403.6 ticks/sec
 
 === Client Stats ===
 Ticks received: 1000000
-Elapsed time: 21.3928s
-Throughput: 46744.7 ticks/sec
-Latency p50: 39.375 us
-Latency p99: 83.542 us
+Elapsed time: 19.4399s
+Throughput: 51440.5 ticks/sec
+Latency p50: 47.958 us
+Latency p99: 276755 us
 ```
 #### Takeaways
 * **Client throughput** closely matches server, proving minimal packet loss under load.
@@ -200,7 +200,7 @@ The batching-server branch is the third evolution of the feed handler:
 
 #### Results
 Example run (10M ticks)
-```c++
+```shell
 === Server Stats ===
 Ticks sent: 10000000
 Elapsed time: 7.07944s
@@ -218,3 +218,20 @@ Latency p99: 79.959 us
 * **Throughput**: Breaks the **1M ticks/sec** barrier.
 * **Latency**: Maintains **sub-100µs p99 latency**, despite pacing.
 * **Stability**: No packet drops under sustained load, thanks to pacing + batching.
+
+## Future improvements
+This project demonstrates how multithreading, lock-free data structures, batching, and pacing can push a simple market data
+feed handler toward **high-throughput, low-latency performance**. However, it is far from production-grade and leaves ample room for future
+improvements:
+
+- **Resilience & Fault Tolerance**: Current design assumes a perfect network — no packet loss, no clock drift, no message reordering. A
+  production system would require retransmission, sequencing, and gap-fill logic.
+- **Scalability**: The architecture is single-symbol and single-feed. Extending to thousands of instruments, multiple multicast groups, or
+  heterogeneous feeds would require careful load balancing and parallelism.
+- **Advanced Optimizations**: Exploring more optimization opportunities can improve the performance metrics by another magnitude.
+- **Testing Under Stress**: While throughput and latency are measured, the system has not been tested under adverse conditions.
+- **Extensibility**: Currently limited to synthetic ticks and VWAP-like analytics. Future work could integrate real exchange activity and
+  more advanced trading metrics.
+
+In short, this project is not a “perfect” feed handler — it is a learning-focused, iterative exploration of performance engineering in
+C++. Each branch pushes the design a little further, and there is still plenty of headroom to explore.
